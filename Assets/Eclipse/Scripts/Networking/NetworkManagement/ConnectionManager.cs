@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using TMPro;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
+using Unity.Services.Authentication;
 using Unity.Services.Lobbies;
 using Unity.Services.Lobbies.Models;
 using Unity.Services.Relay;
@@ -22,7 +23,7 @@ namespace Eclipse.Connections
         public Lobby privateLobby, currentMatchLobby;
         public Allocation currentMatchRelay;
         public JoinAllocation currentJoinAllocation;
-        public TextMeshProUGUI joinCodeText;
+        public TextMeshProUGUI lobbyJoinCode, relayJoinCode;
 
         private void Awake()
         {
@@ -70,7 +71,8 @@ namespace Eclipse.Connections
             currentMatchLobby = await Lobbies.Instance.CreateLobbyAsync(StringHelpers.RandomString(20), 12, clo);
             //Create relay allocaton for match
             //assign relay for match
-            joinCodeText.text = currentMatchLobby.LobbyCode;
+            lobbyJoinCode.text = currentMatchLobby.LobbyCode;
+            relayJoinCode.text = currentMatchLobby.Data["relaycode"].Value;
             NetworkManager.Singleton.NetworkConfig.NetworkTransport = mp_transport;
             mp_transport.SetHostRelayData(currentMatchRelay.RelayServer.IpV4,
                 (ushort)currentMatchRelay.RelayServer.Port,
@@ -89,8 +91,9 @@ namespace Eclipse.Connections
         public async void JoinGameWithCode(string code)
         {
             currentMatchLobby = await Lobbies.Instance.JoinLobbyByCodeAsync(code);
-            joinCodeText.text = currentMatchLobby.LobbyCode;
-            Debug.Log(currentMatchLobby.Data["relaycode"]);
+            lobbyJoinCode.text = currentMatchLobby.LobbyCode;
+            relayJoinCode.text = currentMatchLobby.Data["relaycode"].Value;
+            Debug.Log(currentMatchLobby.Data["relaycode"].Value);
             currentJoinAllocation = await Relay.Instance.JoinAllocationAsync(currentMatchLobby.Data["relaycode"].Value);
             NetworkManager.Singleton.NetworkConfig.NetworkTransport = mp_transport;
             mp_transport.SetClientRelayData(currentJoinAllocation.RelayServer.IpV4,
@@ -101,7 +104,12 @@ namespace Eclipse.Connections
                 currentJoinAllocation.HostConnectionData,
                 true);
             NetworkManager.Singleton.StartClient();
+            NetworkManager.Singleton.SceneManager.LoadScene(maps.Find(x => x.Name == currentMatchLobby.Data["map"].Value).Name, UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
-
+        private void OnApplicationQuit()
+        {
+            Lobbies.Instance.DeleteLobbyAsync(privateLobby.Id);
+            Lobbies.Instance.RemovePlayerAsync(currentMatchLobby.Id, AuthenticationService.Instance.PlayerId);
+        }
     }
 }
