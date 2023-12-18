@@ -90,6 +90,7 @@ namespace Eclipse.Connections
         {
             currentMatchLobby = await Lobbies.Instance.JoinLobbyByCodeAsync(code);
             joinCodeText.text = currentMatchLobby.LobbyCode;
+            Debug.Log(currentMatchLobby.Data["relaycode"]);
             currentJoinAllocation = await Relay.Instance.JoinAllocationAsync(currentMatchLobby.Data["relaycode"].Value);
             NetworkManager.Singleton.NetworkConfig.NetworkTransport = mp_transport;
             mp_transport.SetClientRelayData(currentJoinAllocation.RelayServer.IpV4,
