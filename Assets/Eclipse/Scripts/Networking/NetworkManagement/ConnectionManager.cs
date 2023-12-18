@@ -78,8 +78,7 @@ namespace Eclipse.Connections
                 (ushort)currentMatchRelay.RelayServer.Port,
                 currentMatchRelay.AllocationIdBytes,
                 currentMatchRelay.Key,
-                currentMatchRelay.ConnectionData,
-                true);
+                currentMatchRelay.ConnectionData);
             //Start host, change scene
             NetworkManager.Singleton.StartHost();
             NetworkManager.Singleton.SceneManager.LoadScene(chosenMap.Name, UnityEngine.SceneManagement.LoadSceneMode.Single);
@@ -101,8 +100,7 @@ namespace Eclipse.Connections
                 currentJoinAllocation.AllocationIdBytes,
                 currentJoinAllocation.Key,
                 currentJoinAllocation.ConnectionData,
-                currentJoinAllocation.HostConnectionData,
-                true);
+                currentJoinAllocation.HostConnectionData);
             NetworkManager.Singleton.StartClient();
             NetworkManager.Singleton.SceneManager.LoadScene(maps.Find(x => x.Name == currentMatchLobby.Data["map"].Value).Name, UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
