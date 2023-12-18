@@ -21,7 +21,7 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
     [Header("Aim")]
     [SerializeField, Tooltip("Should aiming horizontally use the Head-Y transform")] bool useHeadY;
     [SerializeField, Tooltip("Aiming transforms")] Transform headX, headY;
-    [SerializeField] Vector2 lookAngle, lookSpeed;
+    [SerializeField] Vector2 lookAngle, finalLookAngle, lookSpeed;
     [SerializeField, Tooltip("Slide-related setting.")] float slideCameraAngle, slideTiltTime, slideCurrentTilt;
     float slideTiltLerpVelocity;
     //----------------------------------------------
@@ -33,6 +33,9 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
     [SerializeField, Tooltip("Drag applied in movement states")] float walkDrag, slideDrag, airborneDrag;
     [SerializeField, Tooltip("Is the player sprinting?")] bool sprinting;
     [SerializeField, Tooltip("The speed under which the player stops, or cannot start sliding")] float slideVelocityThreshold;
+    [SerializeField, Tooltip("How far to push the view down when jumping")] float jumpScreenBounce;
+    bool doubleJumped;
+    bool canDoubleJump;
     [SerializeField] MovementState moveState;
     //----------------------------------------------
     //Wall-riding
@@ -90,6 +93,17 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
     Vector2 moveInput;
     [SerializeField] bool sliding;
     [SerializeField] bool sprintInput;
+    [SerializeField] PlayerCapsuleSizeControl pcsc;
+    [SerializeField, Header("HUD Wobble"), Tooltip("HUD Wobble Transform")] RectTransform HUDWobbleTransform;
+    [SerializeField, Tooltip("HUD Wobble Multiplier")] float HUDWobbleMultiplier;
+
+    [SerializeField] Vector3 currentRecoilAngle, currentRecoilPosition, targetRecoilAngle, targetRecoilPosition;
+    [SerializeField] float angularRecoilDecay, linearRecoilDecay, angularRecoilMultiplier, linearRecoilMultiplier, recoilLerpSpeed, recoilAimMultipler;
+    public void ReceiveRecoil(Vector3 angularRecoil, Vector3 linearRecoil)
+    {
+        targetRecoilAngle += angularRecoil;
+        targetRecoilPosition += linearRecoil;
+    }
     /// <summary>
     /// Sets the look input on this motor
     /// </summary>
@@ -138,7 +152,7 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
     }
     public override void ManagedFixedUpdate()
     {
-        
+        pcsc.SetCrouch(crouching);
         if(useFixedUpdate)
             LookCalcs();
         GroundCheck();
@@ -149,6 +163,7 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
             sliding = false;
         }
         rb.drag = moveState switch { MovementState.onFoot => walkDrag, MovementState.sliding => slideDrag, MovementState.airborne => airborneDrag, _ => 0};
+        
         if (!wallriding)
             MoveCalcs();
         WallrideUpdate();
@@ -167,6 +182,19 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
         Vector2 bobPos = new(xBobCurve.Evaluate(bobLerp.x) * bobExtentMult.x, yBobCurve.Evaluate(bobLerp.y) * bobExtentMult.y);
         headbobPosition = bobPos * headbobMultiplier;
         headbobTransform.localPosition = Vector3.Lerp(headbobTransform.localPosition, headbobPosition, Time.fixedDeltaTime * headbobLerpSpeed);
+        headbobTransform.localRotation = Quaternion.identity;
+        if (HUDWobbleTransform)
+        {
+            HUDWobbleTransform.localPosition = headbobTransform.localPosition * HUDWobbleMultiplier;
+        }
+
+        currentRecoilPosition = Vector3.Lerp(currentRecoilPosition, targetRecoilPosition, recoilLerpSpeed * Time.fixedDeltaTime);
+        currentRecoilAngle = Vector3.Lerp(currentRecoilAngle, targetRecoilAngle, recoilLerpSpeed * Time.fixedDeltaTime);
+        targetRecoilPosition = Vector3.Lerp(targetRecoilPosition, Vector3.zero, Time.fixedDeltaTime * linearRecoilDecay);
+        targetRecoilAngle = Vector3.Lerp(targetRecoilAngle, Vector3.zero, Time.fixedDeltaTime * angularRecoilDecay);
+        headbobTransform.localPosition += currentRecoilPosition * linearRecoilMultiplier;
+        headbobTransform.localRotation *= Quaternion.Euler(currentRecoilAngle * angularRecoilMultiplier);
+        finalLookAngle = lookAngle + ((Vector2)currentRecoilAngle * recoilAimMultipler);
     }
 
     /// <summary>
@@ -240,11 +268,17 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
             return;
         }
         wallrideNormal = hit.normal;
+        if (rb.GetLateralVelocity().magnitude < wallrideVelocityThreshold)
+        {
+            CancelWallride(false);
+            return;
+        }
         if (!wallriding)
         {
             rb.velocity = rb.GetLateralVelocity() + (Vector3.up * ( rb.velocity.y * 0.4f));
         }
         wallriding = true;
+        doubleJumped = false;
     }
     /// <summary>
     /// Drops and/or ejects the player from the wall
@@ -274,8 +308,8 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
         lookAngle += lookInput_loc;
         lookAngle.y.Clamp(-90, 90);
         slideCurrentTilt = Mathf.SmoothDamp(slideCurrentTilt, moveState == MovementState.sliding ? slideCameraAngle : 0, ref slideTiltLerpVelocity, slideTiltTime);
-        headX.localRotation = Quaternion.Euler(lookAngle.y, 0, slideCurrentTilt);
-        transform.localRotation = Quaternion.Euler(0, lookAngle.x, 0);
+        headX.localRotation = Quaternion.Euler(finalLookAngle.y, 0, slideCurrentTilt);
+        transform.localRotation = Quaternion.Euler(0, finalLookAngle.x, 0);
         if(lookAngle.x > 360)
         {
             lookAngle.x -= 360;
@@ -295,14 +329,22 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
         //Player cannot move, and move calculations will not be done.
         Vector2 moveForce = sprintInput ? sprintForce : ( crouching ? crouchWalkForce : runForce);
         Vector3 movement = (transform.right * moveForce.x * moveInput.x) + (transform.forward * moveForce.y * moveInput.y);
+        Vector3 movementProjected = Vector3.ProjectOnPlane(movement, groundNormal);
         if (moveState == MovementState.onFoot)
         {
-            rb.AddForce(movement);
+            rb.AddForce(movementProjected);
         }
         else
         {
             rb.AddForce(movement * airborneControlMultiplier);
         }
+    }
+    IEnumerator ResetDoubleJump()
+    {
+        canDoubleJump = false;
+        yield return new WaitForSeconds(0.1f);
+        canDoubleJump = true;
+        yield return new WaitForFixedUpdate();
     }
     /// <summary>
     /// Spherecasts to detect the ground
@@ -318,6 +360,7 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
                     moveState = MovementState.onFoot;
                 else
                     moveState = MovementState.sliding;
+                doubleJumped = false;
             }
         }
         else
@@ -373,15 +416,33 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
         {
             Debug.Log("Player jumping");
             if (moveState == MovementState.onFoot || moveState == MovementState.sliding)
-                rb.velocity = rb.GetLateralVelocity() + (doubleJumpVelocity * Vector3.up);
+            {
+                JumpForce();
+                StartCoroutine(ResetDoubleJump());
+                doubleJumped = false;
+            }
+            else
+            {
+                if (!doubleJumped && canDoubleJump)
+                {
+                    JumpForce();
+                    
+                    doubleJumped = true;
+                }
+            }
         }
         else
         {
             CancelWallride(true);
         }
     }
+    void JumpForce()
+    {
+        rb.velocity = rb.GetLateralVelocity() + (doubleJumpVelocity * Vector3.up);
+        headbobTransform.localPosition += Vector3.down * jumpScreenBounce;
 
-        private void OnCollisionEnter(Collision collision)
+    }
+    private void OnCollisionEnter(Collision collision)
     {
         if (Vector3.Dot(collision.GetContact(0).normal, Vector3.up) > walkableGroundThreshold && collision.impulse.y > collisionImpulseSlideTrigger)
         {

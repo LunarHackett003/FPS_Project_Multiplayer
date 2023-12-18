@@ -73,6 +73,8 @@ public class PlayerInputCollector : MonoBehaviour
 
     public void JumpInput(InputAction.CallbackContext context)
     {
-        rpm.Jump();
+        if(context.started)
+            rpm.Jump();
     }
+
 }

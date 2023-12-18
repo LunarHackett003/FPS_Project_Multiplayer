@@ -58,6 +58,42 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": true
+                },
+                {
+                    "name": "Interact",
+                    "type": "Button",
+                    "id": "67251509-5420-4311-9902-d7280e42c337",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "WeaponNumbers",
+                    "type": "Value",
+                    "id": "033e249b-e4d9-48f8-97c2-5ecbce24cee5",
+                    "expectedControlType": "Axis",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "WeaponButton",
+                    "type": "Button",
+                    "id": "4dc4f558-3dd5-4acc-808e-ef893eb0d7d6",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "SpecialWeaponButton",
+                    "type": "Button",
+                    "id": "d3b5de0a-e197-4f8c-b912-6f5cf4570886",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -344,6 +380,83 @@
                     "processors": "",
                     "groups": "Gamepad",
                     "action": "Crouch",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "8154e843-a307-4a51-8288-5f0ec52ead3a",
+                    "path": "<Keyboard>/e",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "Interact",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "7f8d3615-fe3b-4e3e-b160-3201bd8f99cb",
+                    "path": "<Gamepad>/buttonWest",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "Interact",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "bda3c421-cf93-4bc6-9949-55de5da54a29",
+                    "path": "<Keyboard>/1",
+                    "interactions": "",
+                    "processors": "Scale",
+                    "groups": "Keyboard&Mouse",
+                    "action": "WeaponNumbers",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "5eaeffa2-881a-484a-b96a-117834af12dd",
+                    "path": "<Keyboard>/2",
+                    "interactions": "",
+                    "processors": "Scale(factor=2)",
+                    "groups": "Keyboard&Mouse",
+                    "action": "WeaponNumbers",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "865331a3-32fe-4404-ae51-a03ffae05a93",
+                    "path": "<Keyboard>/3",
+                    "interactions": "",
+                    "processors": "Scale(factor=3)",
+                    "groups": "Keyboard&Mouse",
+                    "action": "WeaponNumbers",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "b1fc6be9-3d6f-4a3d-a89f-d98d7aee1716",
+                    "path": "<Gamepad>/buttonNorth",
+                    "interactions": "Tap",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "WeaponButton",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "6e125024-c134-439d-b167-e08ab9a2147c",
+                    "path": "<Gamepad>/buttonNorth",
+                    "interactions": "MultiTap",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "SpecialWeaponButton",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

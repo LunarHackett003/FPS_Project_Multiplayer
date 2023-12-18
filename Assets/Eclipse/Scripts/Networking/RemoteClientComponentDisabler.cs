@@ -7,7 +7,7 @@ public class RemoteClientComponentDisabler : NetworkBehaviour
 {
 
     [SerializeField] MonoBehaviour[] disableOnOwner, disableOnRemote;
-
+    [SerializeField] GameObject[] go_OwnerDisable, go_RemoteDisable;
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
@@ -18,12 +18,20 @@ public class RemoteClientComponentDisabler : NetworkBehaviour
             {
                 component.enabled = false;
             }
+            foreach (var item in go_RemoteDisable)
+            {
+                item.SetActive(false);
+            }
         }
         else
         {
             foreach(var component in disableOnOwner)
             {
                 component.enabled = false;
+            }
+            foreach(var item in go_OwnerDisable)
+            {
+                item.SetActive(false);
             }
         }
         

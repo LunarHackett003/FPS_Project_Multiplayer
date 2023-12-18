@@ -25,7 +25,10 @@ public class PlayerCapsuleSizeControl : ManagedBehaviour
     [SerializeField, Tooltip("Is the player crouching?")] bool crouching;
     [SerializeField, Tooltip("The capsule height's offset from the head height")] float standingCapsuleHeightHeadBuffer, crouchingCapsuleHeightHeadBuffer;
     [SerializeField, Tooltip("The player's capsule collider")] CapsuleCollider capsule;
-
+    public void SetCrouch(bool crouching)
+    {
+        this.crouching = crouching;
+    }
     [SerializeField, Tooltip("The player's physical material")] PhysicMaterial physicalMaterial;
 
     float crouchLerpVelocity;
