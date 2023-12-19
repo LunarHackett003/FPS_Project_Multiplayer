@@ -34,13 +34,7 @@ public class MPMenuStarter : MonoBehaviour
         {
             try
             {
-                SignInOptions o = new()
-                {
-                    CreateAccount = !AuthenticationService.Instance.SessionTokenExists,
-
-
-                };
-                await AuthenticationService.Instance.SignInAnonymouslyAsync(o);
+                await AuthenticationService.Instance.SignInAnonymouslyAsync();
             }
             catch (AuthenticationException e)
             {

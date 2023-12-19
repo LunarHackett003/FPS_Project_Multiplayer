@@ -64,7 +64,7 @@ namespace Eclipse.Connections
                 {
                     {"map", new(DataObject.VisibilityOptions.Public, chosenMap.Name) },
                     {"gamemode", new(DataObject.VisibilityOptions.Public, "debug") },
-                    {"relaycode", new(DataObject.VisibilityOptions.Public, jc)}
+                    {"relaycode", new(DataObject.VisibilityOptions.Member, currentMatchRelay.AllocationId.ToString())}
                 },
                 IsPrivate = false
             };
@@ -89,12 +89,24 @@ namespace Eclipse.Connections
         }
         public async void JoinGameWithCode(string code)
         {
-            currentMatchLobby = await Lobbies.Instance.JoinLobbyByCodeAsync(code);
-            lobbyJoinCode.text = currentMatchLobby.LobbyCode;
-            relayJoinCode.text = currentMatchLobby.Data["relaycode"].Value;
-            Debug.Log(currentMatchLobby.Data["relaycode"].Value);
-            currentJoinAllocation = await Relay.Instance.JoinAllocationAsync(currentMatchLobby.Data["relaycode"].Value);
             NetworkManager.Singleton.NetworkConfig.NetworkTransport = mp_transport;
+            currentMatchLobby = await Lobbies.Instance.JoinLobbyByCodeAsync(code);
+            string guid = currentMatchLobby.Data["relaycode"].Value;
+            lobbyJoinCode.text = currentMatchLobby.LobbyCode;
+            relayJoinCode.text = guid;
+            Debug.Log(guid);
+            try
+            {
+                string jc = await Relay.Instance.GetJoinCodeAsync(new System.Guid(guid));
+                currentJoinAllocation = await Relay.Instance.JoinAllocationAsync(jc);
+            }
+            catch (RelayServiceException e)
+            {
+                Debug.LogException(e, this);
+                await Lobbies.Instance.RemovePlayerAsync(currentMatchLobby.Id, AuthenticationService.Instance.PlayerId);
+                return;
+            }
+
             mp_transport.SetClientRelayData(currentJoinAllocation.RelayServer.IpV4,
                 (ushort)currentJoinAllocation.RelayServer.Port,
                 currentJoinAllocation.AllocationIdBytes,
