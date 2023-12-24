@@ -40,7 +40,7 @@ namespace Eclipse.Connections
         public void StartSinglePlayerGame()
         {
             NetworkManager.Singleton.NetworkConfig.NetworkTransport = sp_transport;
-            SceneReference chosenMap = maps[Random.Range(0, maps.Count - 1)];
+            SceneReference chosenMap = maps[Random.Range(0, maps.Count)];
             NetworkManager.Singleton.StartHost();
             NetworkManager.Singleton.SceneManager.LoadScene(chosenMap.Name, UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
@@ -55,7 +55,7 @@ namespace Eclipse.Connections
         public async void HostGame()
         {
             //Create lobby for match
-            SceneReference chosenMap = maps[Random.Range(0, maps.Count - 1)];
+            SceneReference chosenMap = maps[Random.Range(0, maps.Count)];
             currentMatchRelay = await Relay.Instance.CreateAllocationAsync(12);
             string jc = await Relay.Instance.GetJoinCodeAsync(currentMatchRelay.AllocationId);
             CreateLobbyOptions clo = new()
@@ -114,7 +114,6 @@ namespace Eclipse.Connections
                 currentJoinAllocation.ConnectionData,
                 currentJoinAllocation.HostConnectionData);
             NetworkManager.Singleton.StartClient();
-            NetworkManager.Singleton.SceneManager.LoadScene(maps.Find(x => x.Name == currentMatchLobby.Data["map"].Value).Name, UnityEngine.SceneManagement.LoadSceneMode.Single);
         }
         private void OnApplicationQuit()
         {

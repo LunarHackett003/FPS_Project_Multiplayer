@@ -186,10 +186,11 @@ MonoBehaviour:
   NetworkConfig:
     ProtocolVersion: 0
     NetworkTransport: {fileID: 6568863552782872796}
-    PlayerPrefab: {fileID: 6560496060754960751, guid: 5a9824b81cf4de14ab082eb3d2e710ee, type: 3}
+    PlayerPrefab: {fileID: 6006223484593892231, guid: 5a9824b81cf4de14ab082eb3d2e710ee, type: 3}
     Prefabs:
       NetworkPrefabsLists:
       - {fileID: 11400000, guid: c531568508d8ba84a80c1f3b96e7fd7d, type: 2}
+      - {fileID: 11400000, guid: a380d5e64c6872742a98c6e337a0974d, type: 2}
     TickRate: 30
     ClientConnectionBufferTimeout: 10
     ConnectionApproval: 0
@@ -221,6 +222,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_ProtocolType: 1
+  m_UseWebSockets: 0
+  m_UseEncryption: 0
   m_MaxPacketQueueSize: 128
   m_MaxPayloadSize: 6144
   m_HeartbeatTimeoutMS: 500
@@ -252,8 +255,6 @@ MonoBehaviour:
   maps:
   - asset: {fileID: 102900000, guid: d1c14f1d0b65330439730bef1aca1ca8, type: 3}
     guid: d1c14f1d0b65330439730bef1aca1ca8
-  - asset: {fileID: 102900000, guid: e419f2e3758d8c5439b931b817ca0258, type: 3}
-    guid: e419f2e3758d8c5439b931b817ca0258
   lobbyJoinCode: {fileID: 5876398261103661315}
   relayJoinCode: {fileID: 1194647737984143360}
 --- !u!1 &2746333380061848044
@@ -301,6 +302,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_ProtocolType: 0
+  m_UseWebSockets: 0
+  m_UseEncryption: 0
   m_MaxPacketQueueSize: 128
   m_MaxPayloadSize: 6144
   m_HeartbeatTimeoutMS: 500

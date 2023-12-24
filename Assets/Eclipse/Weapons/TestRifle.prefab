@@ -429,6 +429,7 @@ GameObject:
   - component: {fileID: 2526593001543501796}
   - component: {fileID: 3287403930092409246}
   - component: {fileID: 803102821295394924}
+  - component: {fileID: -3866802266707272430}
   m_Layer: 11
   m_Name: TestRifle
   m_TagString: Untagged
@@ -573,13 +574,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fireTransform: {fileID: 0}
+  trailTransform: {fileID: 2751607491936510204}
   maxAmmo: 30
+  currentlyOwned:
+    m_InternalValue: 0
   timeBetweenShots: 0.1
-  canAutoFire: 0
+  canAutoFire: 1
   fireReady: 0
   shotsBeforeRechamber: 0
   chambered: 0
   burstFireCount: 0
+  timeBetweenBursts: 0
+  projectile: {fileID: 0}
+  projectileForwardVelocity: 0
   fireInput: 0
   firePressed: 0
   bulletTrail: {fileID: 6856311157913019762, guid: b8e04435048ec38428381e0c9ded9761, type: 3}
@@ -589,14 +596,26 @@ MonoBehaviour:
   bulletRange: 200
   bulletLayermask:
     serializedVersion: 2
-    m_Bits: 256
+    m_Bits: 384
   defaultSpread: {x: 0, y: 0}
-  additiveSpread: {x: 5, y: 5}
+  additiveSpread: {x: 10, y: 10}
   currentAddSpread: 0
-  spreadPerShot: 0.3
+  spreadPerShot: 0.18
   spreadDecay: 1
-  linearRecoil: {x: 0, y: 0, z: 0}
-  angularRecoil: {x: 0, y: 0, z: 0}
+  linearRecoil: {x: 0.01, y: 0, z: -0.02}
+  angularRecoil: {x: -1, y: 0.5, z: 0.2}
+--- !u!114 &-3866802266707272430
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4928273337610912748}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6c0be61502bb534f922ebb746851216, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &5091999647268371607
 GameObject:
   m_ObjectHideFlags: 0

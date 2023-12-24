@@ -21,6 +21,7 @@ namespace Eclipse.Weapons
         [SerializeField] BaseWeapon currentTargetedWeapon;
         [SerializeField] Transform activeWeaponTransform;
         [SerializeField] Transform[] holsters;
+
         public void EquipWeapon(BaseWeapon bw)
         {
             Vector3 newWeaponPos = bw.transform.position;
@@ -79,7 +80,7 @@ namespace Eclipse.Weapons
                     return;
                 }
                 hit.rigidbody.TryGetComponent(out BaseWeapon wp);
-                if (wp)
+                if (wp && ! wp.currentlyOwned.Value)
                 {
                     weaponNameText.text = wp.name;
                     currentTargetedWeapon = wp;

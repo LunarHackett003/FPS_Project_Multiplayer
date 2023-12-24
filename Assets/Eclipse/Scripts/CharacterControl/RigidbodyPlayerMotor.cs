@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -34,12 +33,21 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
     [SerializeField, Tooltip("Is the player sprinting?")] bool sprinting;
     [SerializeField, Tooltip("The speed under which the player stops, or cannot start sliding")] float slideVelocityThreshold;
     [SerializeField, Tooltip("How far to push the view down when jumping")] float jumpScreenBounce;
+    [SerializeField, Tooltip("Is double-jumping enabled?")] bool doubleJumpEnabled;
+    public void SetDoubleJumpActive(bool activated)
+    {
+        doubleJumpEnabled = activated;
+    }
     bool doubleJumped;
     bool canDoubleJump;
     [SerializeField] MovementState moveState;
     //----------------------------------------------
     //Wall-riding
     //----------------------------------------------
+    public void SetWallrunActive(bool activated)
+    {
+        wallRideEnabled = activated;
+    }
     [Header("Wall-Riding"), SerializeField, Tooltip("Is wallriding enabled?")] bool wallRideEnabled;
     [SerializeField, Tooltip("Is the player wallriding?")] bool wallriding;
     [SerializeField, Tooltip("Wallride force")] float wallrideMoveForce, wallrideStickForce;
@@ -55,7 +63,9 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
     [SerializeField, Tooltip("Wallride Capsule Cast Setting")] float wallrideCheckDistance, wallrideCapsuleCastRadius, wallrideCapsuleCastHeight;
     [SerializeField, Tooltip("Wallride Capsule Cast Setting")] float wallrideCheckOriginHeight;
     [SerializeField, Tooltip("Wallride Capsule Cast Setting")] float wallrideEnableTimeAfterGrounded, wallrideCurrentTimeAfterGrounded;
+    [SerializeField, Tooltip("How quickly to lerp towards the wall-run normal, to help keep aligned with the wallrun")] float wallrunNormalLerpTime;
     bool wallrideEnabledAfterGrounded;
+    bool wallOnRight;
     //----------------------------------------------
     //Ground Check
     //----------------------------------------------
@@ -98,7 +108,7 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
     [SerializeField, Tooltip("HUD Wobble Multiplier")] float HUDWobbleMultiplier;
 
     [SerializeField] Vector3 currentRecoilAngle, currentRecoilPosition, targetRecoilAngle, targetRecoilPosition;
-    [SerializeField] float angularRecoilDecay, linearRecoilDecay, angularRecoilMultiplier, linearRecoilMultiplier, recoilLerpSpeed, recoilAimMultipler;
+    [SerializeField] float angularRecoilDecay, linearRecoilDecay, angularRecoilMultiplier, linearRecoilMultiplier, linearRecoilLerpSpeed, angularRecoilLerpSpeed, recoilAimMultipler;
     public void ReceiveRecoil(Vector3 angularRecoil, Vector3 linearRecoil)
     {
         targetRecoilAngle += angularRecoil;
@@ -188,13 +198,13 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
             HUDWobbleTransform.localPosition = headbobTransform.localPosition * HUDWobbleMultiplier;
         }
 
-        currentRecoilPosition = Vector3.Lerp(currentRecoilPosition, targetRecoilPosition, recoilLerpSpeed * Time.fixedDeltaTime);
-        currentRecoilAngle = Vector3.Lerp(currentRecoilAngle, targetRecoilAngle, recoilLerpSpeed * Time.fixedDeltaTime);
+        currentRecoilPosition = Vector3.Lerp(currentRecoilPosition, targetRecoilPosition, linearRecoilLerpSpeed * Time.fixedDeltaTime);
+        currentRecoilAngle = Vector3.Lerp(currentRecoilAngle, targetRecoilAngle, linearRecoilLerpSpeed * Time.fixedDeltaTime);
         targetRecoilPosition = Vector3.Lerp(targetRecoilPosition, Vector3.zero, Time.fixedDeltaTime * linearRecoilDecay);
         targetRecoilAngle = Vector3.Lerp(targetRecoilAngle, Vector3.zero, Time.fixedDeltaTime * angularRecoilDecay);
         headbobTransform.localPosition += currentRecoilPosition * linearRecoilMultiplier;
         headbobTransform.localRotation *= Quaternion.Euler(currentRecoilAngle * angularRecoilMultiplier);
-        finalLookAngle = lookAngle + ((Vector2)currentRecoilAngle * recoilAimMultipler);
+        finalLookAngle = lookAngle + (new Vector2 (currentRecoilAngle.y, currentRecoilAngle.x) * recoilAimMultipler);
     }
 
     /// <summary>
@@ -208,6 +218,7 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
             Vector3 wallrideVector = Vector3.Project(transform.forward, Vector3.Cross(transform.up, wallrideNormal));
             rb.AddForce(-wallrideNormal * wallrideStickForce + (wallrideMoveForce * moveInput.y * wallrideVector + (wallrideGravityInfluence.Evaluate(Mathf.InverseLerp(0, wallrideMaxTime, wallrideCurrentTime)) * rb.mass * -Physics.gravity)));
             wallrideCurrentTime += Time.fixedDeltaTime;
+            transform.right = Vector3.Lerp(transform.right, wallOnRight ? -wallrideNormal : wallrideNormal, Time.fixedDeltaTime * wallrunNormalLerpTime);
 
             if(rb.GetLateralVelocity().magnitude < wallrideVelocityThreshold)
             {
@@ -251,15 +262,21 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
     {
         Vector3 capsuleOriginPosition = transform.position + new Vector3(0, wallrideCheckOriginHeight, 0);
         Vector3 capsuleSize = Vector3.up * wallrideCapsuleCastHeight;
-        if (!Physics.CapsuleCast(capsuleOriginPosition + capsuleSize, capsuleOriginPosition - capsuleSize, wallrideCapsuleCastRadius, transform.right, out RaycastHit hit, wallrideCheckDistance, groundCheckLayermask))
+        bool rightWallNotHit = false;
+        RaycastHit hit1, hit2 = new();
+        if (!Physics.CapsuleCast(capsuleOriginPosition + capsuleSize, capsuleOriginPosition - capsuleSize, wallrideCapsuleCastRadius, transform.right, out hit1, wallrideCheckDistance, groundCheckLayermask))
         {
-            if(!Physics.CapsuleCast(capsuleOriginPosition + capsuleSize, capsuleOriginPosition - capsuleSize, wallrideCapsuleCastRadius, -transform.right, out hit, wallrideCheckDistance, groundCheckLayermask))
+            rightWallNotHit = true;
+        }
+        if (rightWallNotHit)
+        if(!Physics.CapsuleCast(capsuleOriginPosition + capsuleSize, capsuleOriginPosition - capsuleSize, wallrideCapsuleCastRadius, -transform.right, out hit2, wallrideCheckDistance, groundCheckLayermask))
             {
                 if(wallriding)
                     CancelWallride(false);
                 return;
             }
-        }
+        RaycastHit hit = hit1.collider != null ? hit1 : hit2;
+        wallOnRight = hit1.collider != null;
         if(!allowRecling && awaitingRecling && Vector3.Dot(hit.normal, wallrideNormal) > wallReclingSimilarityThreshold)
         {
             //Wallride normals are too similar and the player is not allowed to recling.
@@ -276,6 +293,8 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
         if (!wallriding)
         {
             rb.velocity = rb.GetLateralVelocity() + (Vector3.up * ( rb.velocity.y * 0.4f));
+            lookAngle.x = 0;
+
         }
         wallriding = true;
         doubleJumped = false;
@@ -289,7 +308,8 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
         wallriding = false;
         awaitingRecling = true;
         currentWallrideNormalClearTime = 0;
-
+        transform.rotation = Quaternion.Euler(0, headY.eulerAngles.y, 0);
+        headY.localRotation = Quaternion.identity;
         if (eject)
         {
             rb.velocity += ((wallrideNormal + Vector3.up).normalized * doubleJumpVelocity);
@@ -307,10 +327,21 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
         lookInput_loc.y *= -1;
         lookAngle += lookInput_loc;
         lookAngle.y.Clamp(-90, 90);
+        lookAngle.x.Clamp(-45, 45);
         slideCurrentTilt = Mathf.SmoothDamp(slideCurrentTilt, moveState == MovementState.sliding ? slideCameraAngle : 0, ref slideTiltLerpVelocity, slideTiltTime);
         headX.localRotation = Quaternion.Euler(finalLookAngle.y, 0, slideCurrentTilt);
-        transform.localRotation = Quaternion.Euler(0, finalLookAngle.x, 0);
-        if(lookAngle.x > 360)
+        if (wallriding)
+        {
+            float lookYaw = finalLookAngle.x * 0.9f;
+            headY.localRotation = Quaternion.Euler(0, lookYaw, 0);
+            transform.localRotation *= Quaternion.Euler(0, lookInput_loc.x * 0.1f, 0);
+        }
+        else
+        {
+            headY.localRotation = Quaternion.identity;
+            transform.localRotation *= Quaternion.Euler(0, lookInput_loc.x, 0);
+        }
+        if (lookAngle.x > 360)
         {
             lookAngle.x -= 360;
         }
@@ -423,7 +454,7 @@ public class RigidbodyPlayerMotor : ManagedBehaviour
             }
             else
             {
-                if (!doubleJumped && canDoubleJump)
+                if (!doubleJumped && canDoubleJump && doubleJumpEnabled)
                 {
                     JumpForce();
                     

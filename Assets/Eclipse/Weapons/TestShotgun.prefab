@@ -180,6 +180,7 @@ GameObject:
   - component: {fileID: 4886402334314878364}
   - component: {fileID: 5502392924235393302}
   - component: {fileID: 4239400055516597896}
+  - component: {fileID: -976610195775965906}
   m_Layer: 11
   m_Name: TestShotgun
   m_TagString: Untagged
@@ -319,30 +320,48 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fireTransform: {fileID: 0}
+  trailTransform: {fileID: 6753010470855329369}
   maxAmmo: 6
+  currentlyOwned:
+    m_InternalValue: 0
   timeBetweenShots: 0.25
-  canAutoFire: 0
-  fireReady: 0
+  canAutoFire: 1
+  fireReady: 1
   shotsBeforeRechamber: 0
-  chambered: 0
+  chambered: 1
   burstFireCount: 0
+  timeBetweenBursts: 0
+  projectile: {fileID: 0}
+  projectileForwardVelocity: 0
   fireInput: 0
   firePressed: 0
-  bulletTrail: {fileID: 6856311157913019762, guid: b8e04435048ec38428381e0c9ded9761, type: 3}
+  bulletTrail: {fileID: 6856311157913019762, guid: a9f37aeb136336845b98a1132fb8c77f, type: 3}
   fireParticles: {fileID: 6879390713775126295}
-  trailSpeed: 75
-  bulletsPerShot: 20
-  bulletRange: 50
+  trailSpeed: 50
+  bulletsPerShot: 15
+  bulletRange: 30
   bulletLayermask:
     serializedVersion: 2
-    m_Bits: 256
-  defaultSpread: {x: 15, y: 15}
+    m_Bits: 384
+  defaultSpread: {x: 5, y: 5}
   additiveSpread: {x: 0, y: 0}
   currentAddSpread: 0
   spreadPerShot: 0
   spreadDecay: 0
-  linearRecoil: {x: 0, y: 0, z: 0}
-  angularRecoil: {x: 0, y: 0, z: 0}
+  linearRecoil: {x: 0, y: 0, z: 0.1}
+  angularRecoil: {x: -1, y: 0.5, z: 1}
+--- !u!114 &-976610195775965906
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7640769166813567431}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6c0be61502bb534f922ebb746851216, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &8140321188232024158
 GameObject:
   m_ObjectHideFlags: 0

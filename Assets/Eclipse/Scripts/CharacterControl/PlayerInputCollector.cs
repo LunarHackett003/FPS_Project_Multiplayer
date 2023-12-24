@@ -1,20 +1,30 @@
 using JetBrains.Annotations;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.ProBuilder.Shapes;
 
-public class PlayerInputCollector : MonoBehaviour
+public class PlayerInputCollector : NetworkBehaviour
 {
     public static PlayerInputCollector Instance;
     private void Awake()
     {
-        if (!Instance)
-            Instance = this;
-        else
-            Destroy(this);
-        pi = GetComponent<PlayerInput>();
+
+    }
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+
+        if (IsOwner)
+        {
+            if (!Instance)
+                Instance = this;
+            else
+                Destroy(this);
+            pi = GetComponent<PlayerInput>();
+        }
     }
     public bool toggleCrouch, toggleSprint;
     PlayerInput pi;

@@ -7,11 +7,12 @@ namespace Eclipse.Weapons
 {
     public class BaseWeapon : NetworkBehaviour
     {
-        [SerializeField] protected Transform fireTransform;
+        RigidbodyPlayerMotor rpbm;
+        [SerializeField] protected Transform fireTransform, trailTransform;
 
         [SerializeField, Header("Ammo")] protected int maxAmmo;
         protected int currentAmmo;
-
+        public NetworkVariable<bool> currentlyOwned = new();
         [SerializeField, Header("Firing"), Tooltip("The time, in seconds, between each shot")] protected float timeBetweenShots;
         [SerializeField, Tooltip("Can the trigger be held down to fire?")] protected bool canAutoFire;
         [SerializeField] protected bool fireReady;
@@ -22,8 +23,11 @@ namespace Eclipse.Weapons
         [SerializeField, Tooltip("Is the weapon able to fire?")] protected bool chambered;
         [SerializeField, Tooltip("How many times you can shoot before having to release the trigger?\n" +
             "When zero, this behaviour is disabled.")] protected int burstFireCount;
+        [SerializeField, Tooltip("The delay after firing a burst")] protected float timeBetweenBursts;
         protected bool weaponEquipped;
         protected Rigidbody weaponRB;
+        [SerializeField, Tooltip("The projectile fired. If null, the weapon will be hitscan.")] protected GameObject projectile;
+        [SerializeField, Tooltip("The velocity of the projectile. If 0, the weapon will be hitscan.")] protected float projectileForwardVelocity;
         [SerializeField] protected bool fireInput;
         [SerializeField] protected bool firePressed;
         [SerializeField] protected GameObject bulletTrail;
@@ -39,34 +43,45 @@ namespace Eclipse.Weapons
         [SerializeField, Tooltip("How fast spread decays")] protected float spreadDecay;
         [SerializeField, Tooltip("How much linear recoil to add per shot")] protected Vector3 linearRecoil;
         [SerializeField, Tooltip("How much angular recoil to add per shot")] protected Vector3 angularRecoil;
+        public override void OnNetworkSpawn()
+        {
+            base.OnNetworkSpawn();
+            weaponRB = GetComponent<Rigidbody>();
+        }
+
         public void PickupWeapon(WeaponManager newManager, bool isPlayer)
         {
             if (isPlayer)
             {
-                GrabWeaponServerRPC(newManager.GetComponent<NetworkObject>().OwnerClientId);
+                GrabWeaponServerRPC(newManager.OwnerClientId);
             }
             weaponEquipped = true;
             CheckWeaponPhysics();
             fireTransform = newManager.GetFireTransform;
-            NetworkObject.TrySetParent(newManager.transform,false);
+            rpbm = newManager.GetComponent<RigidbodyPlayerMotor>();
         }
         public void DropWeapon()
         {
             DropWeaponServerRPC();
             weaponEquipped = false;
             CheckWeaponPhysics();
-            NetworkObject.TrySetParent((Transform)null, true);
+            rpbm = null;
         }
         [ServerRpc]
         public void DropWeaponServerRPC()
         {
             NetworkObject.RemoveOwnership();
+            currentlyOwned.Value = false;
+            NetworkObject.TrySetParent((Transform)null, true);
         }
 
-        [ServerRpc]
+        [ServerRpc(RequireOwnership = false, Delivery = RpcDelivery.Reliable)]
         void GrabWeaponServerRPC(ulong clientID)
         {
+            Debug.Log($"Transferring weapon to {clientID}");
             NetworkObject.ChangeOwnership(clientID);
+            currentlyOwned.Value = true;
+            NetworkObject.TrySetParent(NetworkManager.ConnectedClients[clientID].PlayerObject.transform, false);
         }
         void CheckWeaponPhysics()
         {
@@ -86,6 +101,12 @@ namespace Eclipse.Weapons
         private void FixedUpdate()
         {
             CheckFireInput();
+            currentAddSpread = Mathf.Clamp01(currentAddSpread - (spreadDecay * Time.fixedDeltaTime));
+            if (weaponEquipped != currentlyOwned.Value)
+            {
+                weaponEquipped = currentlyOwned.Value;
+                CheckWeaponPhysics();
+            }
         }
         public void SetFireInput(bool input)
         {
@@ -139,24 +160,31 @@ namespace Eclipse.Weapons
             Vector3 fireDirection;
             Vector2 additiveSpreadLerp = Vector2.Lerp(Vector2.zero, additiveSpread, currentAddSpread);
             Vector2 spreadVector = defaultSpread + additiveSpreadLerp;
-            RaycastHit hit = new();
-            for (int i = 0; i < bullets; i++)
+            if (projectile == null || projectileForwardVelocity <= 0)
             {
-                fireDirection = fireTransform.TransformDirection(new Vector3(Random.Range(-spreadVector.x, spreadVector.x), Random.Range(-spreadVector.y, spreadVector.y), bulletRange));
-                if (Physics.Raycast(fireTransform.position, fireDirection, out hit, bulletRange, bulletLayermask, QueryTriggerInteraction.Ignore))
+                RaycastHit hit = new();
+                for (int i = 0; i < bullets; i++)
                 {
-                    DoBulletTrailClientRPC(hit.point, hit.distance);
+                    fireDirection = fireTransform.TransformDirection(new Vector3(Random.Range(-spreadVector.x, spreadVector.x), Random.Range(-spreadVector.y, spreadVector.y), bulletRange));
+                    if (Physics.Raycast(fireTransform.position, fireDirection, out hit, bulletRange, bulletLayermask, QueryTriggerInteraction.Ignore))
+                    {
+                        DoBulletTrailClientRPC(hit.point, hit.distance);
+                    }
+                    else
+                    {
+                        DoBulletTrailClientRPC(trailTransform.position + fireDirection, bulletRange);
+                    }
+                    Debug.DrawRay(fireTransform.position, fireDirection, hit.collider ? Color.green : Color.red, 0.2f, false);
                 }
-                else
-                {
-                    DoBulletTrailClientRPC(fireTransform.forward * bulletRange, bulletRange);
-                }
-                Debug.DrawRay(fireTransform.position, fireDirection, hit.collider ? Color.green : Color.red, 0.2f, false);
             }
-
+            else
+            {
+                fireDirection = fireTransform.TransformDirection(new Vector3(Random.Range(-spreadVector.x, spreadVector.x), Random.Range(-spreadVector.y, spreadVector.y), projectileForwardVelocity));
+                SpawnProjectileServerRPC(fireDirection);
+            }
             if (regularFire)
             {
-                StartCoroutine(RegularFireWait());
+                StartCoroutine(RegularFireWait(timeBetweenShots));
             }
 
             if(shotsBeforeRechamber > 0)
@@ -167,11 +195,19 @@ namespace Eclipse.Weapons
                     chambered = false;
                 }
             }
+            currentAddSpread += spreadPerShot;
+        }
+        [ServerRpc]
+        public void SpawnProjectileServerRPC(Vector3 direction)
+        {
+            GameObject proj = Instantiate(projectile, fireTransform.position + (fireTransform.forward * 0.2f), projectile.transform.rotation);
+            proj.GetComponent<NetworkObject>().Spawn();
+            proj.GetComponent<Rigidbody>().velocity = direction* projectileForwardVelocity;
         }
         [ClientRpc()]
         public void DoBulletTrailClientRPC(Vector3 end, float distance)
         {
-            GameObject trail = Instantiate(bulletTrail, fireTransform.position, Quaternion.identity);
+            GameObject trail = Instantiate(bulletTrail, trailTransform.position, Quaternion.identity);
             StartCoroutine(TrailLerp(trail.transform, trail.transform.position, end, distance / trailSpeed));
         }
         IEnumerator BurstFire()
@@ -186,12 +222,13 @@ namespace Eclipse.Weapons
                 yield return wfs;
             }
             fireReady = true;
+            StartCoroutine(RegularFireWait(timeBetweenBursts));
             yield return new WaitForFixedUpdate();
         }
-        IEnumerator RegularFireWait()
+        IEnumerator RegularFireWait(float time)
         {
             fireReady = false;
-            var wfs = new WaitForSeconds(timeBetweenShots);
+            var wfs = new WaitForSeconds(time);
             yield return wfs;
             fireReady = true;
             yield return new WaitForFixedUpdate();
@@ -211,18 +248,25 @@ namespace Eclipse.Weapons
                 t += Time.deltaTime;
                 yield return wff;
             }
-            Destroy(trail.gameObject, 1f);
+            trail.position = endPosition;
+            Destroy(trail.gameObject, 2f);
         }
         void SendRecoil()
         {
-            Vector3 ang = RandomRecoilVector(angularRecoil), lin = RandomRecoilVector(linearRecoil);
-            GetComponentInParent<RigidbodyPlayerMotor>().ReceiveRecoil(ang, lin);
+            Vector3 ang = RandomRecoilVector(angularRecoil), lin = LinearRecoilVector(linearRecoil);
+            rpbm.ReceiveRecoil(ang, lin);
         }
-        Vector3 RandomRecoilVector(Vector3 vec)
+        Vector3 LinearRecoilVector(Vector3 range)
         {
-            return new Vector3(Random.Range(0, vec.x),
-                Random.Range(-vec.y, vec.y),
-                Random.Range(-vec.z, vec.z));
+            return new Vector3(Random.Range(0, range.x),
+                Random.Range(0, range.y),
+                Random.Range(0, range.z));
+        }
+        Vector3 RandomRecoilVector(Vector3 range)
+        {
+            return new Vector3(Random.Range(0, range.x),
+                Random.Range(-range.y, range.y),
+                Random.Range(-range.z, range.z));
         }
     }
 }
